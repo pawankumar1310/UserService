@@ -197,7 +197,7 @@ namespace DBService
             {
                 await connection.OpenAsync();
 
-                using (SqlCommand command = new SqlCommand("SP__UpdateUserWithUrl", connection))
+                using (SqlCommand command = new SqlCommand("SP__UpdateUserWithUrls", connection))
                 {
                     command.CommandType = CommandType.StoredProcedure;
                     command.Parameters.AddWithValue("@UserID", userID);
