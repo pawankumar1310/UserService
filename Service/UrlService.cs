@@ -1,30 +1,74 @@
 ﻿using Dto;
-using Structure;
+using Model.UserService;
+using Package;
+using DBService;
+using DTO.UserService;
 
-namespace UserService.Service
+
+namespace Service
 {
     public class UrlService
     {
-        private readonly IUrl _url;
-        public UrlService(IUrl url)
+        public StatusResponse<int> InsertUrl(AddUrlRequest addUrlRequest)
         {
-            _url = url;
+
+            List<UpdateUrlModelRequest> userUrlModels = addUrlRequest.Urls?.Select(url => new UpdateUrlModelRequest
+            {
+                Url = url.Url,
+                UrlLabelId = url.UrlLabelId
+            }).ToList() ?? new List<UpdateUrlModelRequest>();
+
+
+
+
+            AddUrlModelRequest addUrlModelRequest = new AddUrlModelRequest
+            {
+                Urls = userUrlModels,
+                ReferenceID = addUrlRequest.ReferenceID,
+            };
+            try
+            {
+                UrlDBService urlDBService = new();
+                var result = urlDBService.InsertUrl(addUrlModelRequest).Result;
+
+                if (result.Success)
+                {
+                    return StatusResponse<int>.SuccessStatus(result.Data, StatusCode.Found);
+
+                }
+                else
+                {
+                    return StatusResponse<int>.FailureStatus(result.StatusCode, new Exception());
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusResponse<int>.FailureStatus(StatusCode.knownException, ex);
+            }
         }
 
-        public async Task<int> AddUrlService(UrlModel model)
-        {
-            int result = await _url.InsertUrl(model);
-            return result;
-        }
 
-        public async Task<bool> UpdateUrl(string url, UrlModel model)
+        public StatusResponse<List<GetUrlLabelsModelResponse>> GetAllUrlLabels()
         {
-            return await _url.UpdateUrl(url, model);
-        }
+            try
+            {
+                UrlDBService urlDBService = new();
+                var result = urlDBService.GetAllUrlLabels().Result;
 
-        public async Task<bool> UpdateUserWithUrl(string userID, string name, string countryID, string phoneNumber, string emailAddress, string zipCodeID, string url, string label)
-        {
-            return await _url.UpdateUserWithUrl(userID, name, countryID, phoneNumber, emailAddress, zipCodeID, url, label);
+                if (result.Success)
+                {
+                    return StatusResponse<List<GetUrlLabelsModelResponse>>.SuccessStatus(result.Data, StatusCode.Found);
+
+                }
+                else
+                {
+                    return StatusResponse<List<GetUrlLabelsModelResponse>>.FailureStatus(result.StatusCode, new Exception());
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusResponse<List<GetUrlLabelsModelResponse>>.FailureStatus(StatusCode.knownException, ex);
+            }
         }
     }
 }

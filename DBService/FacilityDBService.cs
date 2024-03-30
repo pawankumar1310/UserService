@@ -1,142 +1,101 @@
-using System;
-using System.Collections.Generic;
-using System.Data;
-using System.Data.SqlClient;
-using System.Threading.Tasks;
-using Microsoft.Extensions.Configuration;
-using Dto;
-using Structure;
+﻿using System.Data.SqlClient;
+using Constants.StoredProcedure;
+using Package;
+using Model.UserService;
+using Middleware;
+
 
 namespace DBService
 {
-    public class FacilityDBService : IFacilityService
+    public class FacilityDBService
     {
-        private readonly string _connectionString;
-
-        public FacilityDBService(IConfiguration configuration)
+        public async Task<StatusResponse<int>> CreateFacility(CreateFacilityModelRequest createFacilityModelRequest)
         {
-            _connectionString = configuration.GetConnectionString("UserDB");
-        }
-
-        public async Task<bool> CreateFacility(CreateFacilityRequest createRequest)
-        {
-            using (SqlConnection connection = new SqlConnection(_connectionString))
+            try
             {
-                await connection.OpenAsync();
-
-                using (SqlCommand command = new SqlCommand("CreateFacilitySP", connection))
+                CurdMiddleware curdMiddleware = new();
+                var parameter = new SqlParameter[]
                 {
-                    command.CommandType = CommandType.StoredProcedure;
-                    command.Parameters.AddWithValue("@Name", createRequest.Name);
-                    command.Parameters.AddWithValue("@CreatedBy", createRequest.CreatedBy);
+                    new SqlParameter("@Name", createFacilityModelRequest.Name),
+                    new SqlParameter("@CreatedBy", createFacilityModelRequest.CreatedBy)
+                };
+
+                var storedProcedure = UserDB.CreateFacility;
+                string connectionString = Utility.ConfigurationUtility.GetConnectionString();
 
 
-                    await command.ExecuteNonQueryAsync();
 
-                    return true;
+                var result = await curdMiddleware.ExecuteNonQuery(
+                    connectionString: connectionString,
+                    storedProcedureName: storedProcedure,
+                    parameters: parameter
+                );
+
+                if (result > 0)
+                {
+                    return StatusResponse<int>.SuccessStatus(result, StatusCode.Success);
+
                 }
+                else
+                {
+                    return StatusResponse<int>.FailureStatus(StatusCode.NotFound, new Exception());
+
+                }
+
+            }
+            catch (Exception ex)
+            {
+                return StatusResponse<int>.FailureStatus(StatusCode.knownException, ex);
             }
         }
 
-        public async Task<Facility> GetFacilityById(string facilityId)
+        public async Task<StatusResponse<GetFacilityModelResponse>> GetFacility(GetFacilityModelRequest getFacilityModelRequest)
         {
-            using (SqlConnection connection = new SqlConnection(_connectionString))
+            try
             {
-                await connection.OpenAsync();
-
-                using (SqlCommand command = new SqlCommand("GetFacilityByIdSP", connection))
+                CurdMiddleware curdMiddleware = new();
+                var parameter = new SqlParameter[]
                 {
-                    command.CommandType = CommandType.StoredProcedure;
-                    command.Parameters.AddWithValue("@FacilityID", facilityId);
+                    new SqlParameter("@FacilityID", getFacilityModelRequest.FacilityID),
+                   
+                };
 
-                    using (SqlDataReader reader = await command.ExecuteReaderAsync())
+                var storedProcedure = UserDB.CreateFacility;
+                string connectionString = Utility.ConfigurationUtility.GetConnectionString();
+
+
+
+                var result = await curdMiddleware.ExecuteDataReaderSingle<GetFacilityModelResponse>(
+                    connectionString: connectionString,
+                    storedProcedureName: storedProcedure,
+                    (reader) => new GetFacilityModelResponse
                     {
-                        if (await reader.ReadAsync())
-                        {
-                            return new Facility
-                            {
-                                FacilityID = (string)reader["facilityID"],
-                                Name = reader["name"].ToString(),
-                                CreatedBy = reader["createdBy"].ToString(),
-                                UpdatedBy = reader["updatedBy"].ToString(),
-                                CreatedDate = (DateTime)reader["createdDate"],
-                                UpdatedDate = (DateTime)reader["updatedDate"],
-                            };
-                        }
-                        else
-                        {
-                            return null;
-                        }
-                    }
-                }
-            }
-        }
+                        FacilityID = reader["facilityID"].ToString(),
+                        Name = reader["name"].ToString(),
+                        CreatedBy = reader["createdBy"].ToString(),
+                        UpdatedBy = reader["updatedBy"].ToString(),
+                        CreatedDate = (DateTime)reader["createdDate"],
+                        UpdatedDate = (DateTime)reader["updatedDate"]
+                    },
+                    parameters: parameter
+                );
 
-        public async Task<List<Facility>> GetAllFacilities()
-        {
-            List<Facility> facilities = new List<Facility>();
-
-            using (SqlConnection connection = new SqlConnection(_connectionString))
-            {
-                await connection.OpenAsync();
-
-                using (SqlCommand command = new SqlCommand("GetAllFacilitiesSP", connection))
+                if (result != null)
                 {
-                    command.CommandType = CommandType.StoredProcedure;
+                    return StatusResponse<GetFacilityModelResponse>.SuccessStatus(result, StatusCode.Success);
 
-                    using (SqlDataReader reader = await command.ExecuteReaderAsync())
-                    {
-                        while (await reader.ReadAsync())
-                        {
-                            facilities.Add(new Facility
-                            {
-                                FacilityID = (string)reader["facilityID"],
-                                Name = reader["name"].ToString(),
-                                CreatedBy = reader["createdBy"].ToString(),
-                                UpdatedBy = reader["updatedBy"].ToString(),
-                                CreatedDate = (DateTime)reader["createdDate"],
-                                UpdatedDate = (DateTime)reader["updatedDate"],
-                            });
-                        }
-                    }
                 }
-            }
-
-            return facilities;
-        }
-
-        public async Task UpdateFacility(string facilityId, UpdateFacilityRequest updateRequest)
-        {
-            using (SqlConnection connection = new SqlConnection(_connectionString))
-            {
-                await connection.OpenAsync();
-
-                using (SqlCommand command = new SqlCommand("UpdateFacilitySP", connection))
+                else
                 {
-                    command.CommandType = CommandType.StoredProcedure;
-                    command.Parameters.AddWithValue("@FacilityID", facilityId);
-                    command.Parameters.AddWithValue("@Name", updateRequest.Name);
-                    command.Parameters.AddWithValue("@UpdatedBy", updateRequest.UpdatedBy);
+                    return StatusResponse<GetFacilityModelResponse>.FailureStatus(StatusCode.NotFound, new Exception());
 
-                    await command.ExecuteNonQueryAsync();
                 }
             }
-        }
-
-        public async Task DeleteFacility(string facilityId)
-        {
-            using (SqlConnection connection = new SqlConnection(_connectionString))
+            catch (Exception ex)
             {
-                await connection.OpenAsync();
-
-                using (SqlCommand command = new SqlCommand("DeleteFacilitySP", connection))
-                {
-                    command.CommandType = CommandType.StoredProcedure;
-                    command.Parameters.AddWithValue("@FacilityID", facilityId);
-
-                    await command.ExecuteNonQueryAsync();
-                }
+                return StatusResponse<GetFacilityModelResponse>.FailureStatus(StatusCode.knownException, ex);
             }
+
         }
     }
 }

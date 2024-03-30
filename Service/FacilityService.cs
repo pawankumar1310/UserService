@@ -1,55 +1,41 @@
+﻿using Model.UserService;
+using Package;
+using DTO.UserService;
 using DBService;
-using Dto;
 
 namespace Service
 {
     public class FacilityService
     {
-        private readonly FacilityDBService _facilityDBService;
-
-        public FacilityService(FacilityDBService facilityDBService)
+        public StatusResponse<int> CreateFacility(CreateFacilityRequest createFacilityRequest)
         {
-            _facilityDBService = facilityDBService;
+            var createFacilityModelRequest = new CreateFacilityModelRequest
+            {
+                Name = createFacilityRequest.Name,
+                CreatedBy = createFacilityRequest.CreatedBy,
+            };
+
+            try
+            {
+                FacilityDBService facilityDBService = new();
+                var result = facilityDBService.CreateFacility(createFacilityModelRequest).Result;
+
+                if (result.Success)
+                {
+                    return StatusResponse<int>.SuccessStatus(result.Data, StatusCode.Found);
+
+                }
+                else
+                {
+                    return StatusResponse<int>.FailureStatus(result.StatusCode, new Exception());
+                }
+
+            }
+            catch (Exception ex)
+            {
+                return StatusResponse<int>.FailureStatus(StatusCode.knownException, ex);
+            }
+
         }
-
-
-//-----------------------------  ADD Facility --------------------------------------
-
-        public async Task<bool> CreateFacility(CreateFacilityRequest createFacilityRequest)
-        {
-            return await _facilityDBService.CreateFacility(createFacilityRequest);
-        }
-        
-//------------------------------------- GET Facility BY ID ---------------------------------------
-
-        public async Task<Facility> GetFacilityById(string FacilityId)
-        {
-            return await _facilityDBService.GetFacilityById(FacilityId);
-        }
-
-
-//----------------------------------- GET ALL FacilityS ------------------------------------
-
-        public async Task<List<Facility>> GetAllFacilities()
-        {
-            return await _facilityDBService.GetAllFacilities();
-        }
-
-
-// ---------------------------------------- UPDATE Facility ---------------------------------------
-        public async Task UpdateFacility(string FacilityId, UpdateFacilityRequest updateFacilityRequest)
-        {
-            await _facilityDBService.UpdateFacility(FacilityId, updateFacilityRequest);
-        }
-
-//-------------------------------------- DELETE Facility ----------------------------------------
-
-        public async Task DeleteFacility(string FacilityId)
-        {
-            await _facilityDBService.DeleteFacility(FacilityId);
-        }
-
-
     }
-
 }

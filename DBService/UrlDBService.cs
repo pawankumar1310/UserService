@@ -1,83 +1,100 @@
-﻿using Dto;
-using Microsoft.Extensions.Configuration;
-using Structure;
-using System.Data.SqlClient;
-using System.Data;
+﻿using System.Data.SqlClient;
+using Constants.StoredProcedure;
+using Package;
+using Model.UserService;
+using Middleware;
 
 namespace DBService
 {
-    public class UrlDBService : IUrl
+    public class UrlDBService
     {
-        private readonly string _connectionString;
-        public UrlDBService(IConfiguration configuration)
+
+        public async Task<StatusResponse<int>> InsertUrl(AddUrlModelRequest addUrlModelRequest)
         {
-            this._connectionString = configuration.GetConnectionString("UserDB"); ;
-        }
-        public async Task<int> InsertUrl(UrlModel model)
-        {
-            using (var connection = new SqlConnection(_connectionString))
+            try
             {
-                await connection.OpenAsync();
-                using (var command = new SqlCommand("SP__InsertUrl", connection))
+                CurdMiddleware curdMiddleware = new();
+                string connectionString = Utility.ConfigurationUtility.GetConnectionString();
+
+                List<int> results = new List<int>();
+
+                foreach (var urlModel in addUrlModelRequest.Urls)
                 {
-                    command.CommandType = CommandType.StoredProcedure;
-                    command.Parameters.AddWithValue("@UTLiTableID", model.UTLiTableID);
-                    command.Parameters.AddWithValue("@url", model.Url);
-                    command.Parameters.AddWithValue("@label", model.Label);
-                    command.Parameters.AddWithValue("@referenceID", model.ReferenceID);
-                    return await command.ExecuteNonQueryAsync();
+                    var parameters = new SqlParameter[]
+                    {
+                new SqlParameter("@url", urlModel.Url),
+                new SqlParameter("@urllabelId", urlModel.UrlLabelId),
+                new SqlParameter("@referenceID", addUrlModelRequest.ReferenceID)
+                    };
+
+                    var storedProcedure = UserDB.InsertUrl;
+
+                    var result = await curdMiddleware.ExecuteNonQuery(
+                        connectionString: connectionString,
+                        storedProcedureName: storedProcedure,
+                        parameters: parameters
+                    );
+
+                    results.Add(result);
                 }
+
+                if (results.Any(r => r > 0))
+                {
+                    return StatusResponse<int>.SuccessStatus(results.Sum(), StatusCode.Success);
+                }
+                else
+                {
+                    return StatusResponse<int>.FailureStatus(StatusCode.NotFound, new Exception());
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusResponse<int>.FailureStatus(StatusCode.knownException, ex);
             }
         }
 
 
-        public async Task<bool> UpdateUrl(string url, UrlModel model)
+        public async Task<StatusResponse<List<GetUrlLabelsModelResponse>>> GetAllUrlLabels()
         {
-            using (SqlConnection connection = new SqlConnection(_connectionString))
+            try
             {
-                await connection.OpenAsync();
+                CurdMiddleware curdMiddleware = new();
+                
+                var storedProcedure = UserDB.GetUrlLabels; 
+                string connectionString = Utility.ConfigurationUtility.GetConnectionString();
 
-                using (SqlCommand command = new SqlCommand("UpdateUrlSP", connection))
+                var result = await curdMiddleware.ExecuteDataReaderList<GetUrlLabelsModelResponse>(
+                    connectionString: connectionString,
+                    storedProcedureName: storedProcedure,
+                    (reader) => new GetUrlLabelsModelResponse
+                    {
+                        UrlLabelID = reader["urllabelID"].ToString(),
+                        UrlLabel = reader["urlLabel"].ToString(),
+                        Url = reader["url"].ToString()
+                    }
+                );
+
+
+
+                if (result != null)
                 {
-                    command.CommandType = CommandType.StoredProcedure; 
-                    command.Parameters.AddWithValue("@Url", url);
-                    command.Parameters.AddWithValue("@UTLiTableID", model.UTLiTableID);
-                    command.Parameters.AddWithValue("@Label", model.Label);
-                    command.Parameters.AddWithValue("@ReferenceID", model.ReferenceID);
+                    return StatusResponse<List<GetUrlLabelsModelResponse>>.SuccessStatus(result, StatusCode.Success);
 
-                    int rowsAffected = await command.ExecuteNonQueryAsync();
-
-                    return rowsAffected > 0;
                 }
+                else
+                {
+                    return StatusResponse<List<GetUrlLabelsModelResponse>>.FailureStatus(StatusCode.NotFound, new Exception());
+
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusResponse<List<GetUrlLabelsModelResponse>>.FailureStatus(StatusCode.knownException, ex);
             }
         }
 
 
-        public async Task<bool> UpdateUserWithUrl(string userID, string name, string countryID, string phoneNumber, string emailAddress, string zipCodeID, string url, string label)
-        {
-            using (SqlConnection connection = new SqlConnection(_connectionString))
-            {
-                connection.Open();
-
-                using (SqlCommand cmd = new SqlCommand("SP__UpdateUserWithUrl", connection))
-                {
-                    cmd.CommandType = CommandType.StoredProcedure;
-
-                    cmd.Parameters.AddWithValue("@UserID", userID);
-                    cmd.Parameters.AddWithValue("@Name", name);
-                    cmd.Parameters.AddWithValue("@CountryID", countryID);
-                    cmd.Parameters.AddWithValue("@PhoneNumber", phoneNumber);
-                    cmd.Parameters.AddWithValue("@EmailAddress", emailAddress);
-                    cmd.Parameters.AddWithValue("@ZipCodeID", zipCodeID);
-                    cmd.Parameters.AddWithValue("@Url", url);
-                    cmd.Parameters.AddWithValue("@Label", label);
 
 
-                    int rowsAffected = await cmd.ExecuteNonQueryAsync();
-
-                    return rowsAffected > 0;
-                }
-            }
-        }
     }
 }

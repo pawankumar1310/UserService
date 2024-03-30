@@ -1,58 +1,209 @@
-using Structure;
-using System.Data.SqlClient;
-using System.Data;
-using Dto;
-using System.Security.Cryptography;
-using System.Text;
-using System.Net.Mail;
-using System.Net;
+﻿using Model.UserService;
+using DTO.UserService;
+using Package;
+using DBService;
 
-
-namespace DBService
+namespace Service
 {
     public class UserRegistrationService
     {
 
-        private readonly UserRegistrationDBService _userRegistrationDBService;
-
-        public UserRegistrationService(UserRegistrationDBService userRegistrationDBService)
+        public  StatusResponse<string?> RegisterUser(RegisterUserRequest registerUserRequest)
         {
-            _userRegistrationDBService = userRegistrationDBService;
+            var registerUserModelRequest = new RegisterUserModelRequest
+            {
+                FirstName = registerUserRequest.FirstName,
+                LastName = registerUserRequest.LastName,
+                CountryID = registerUserRequest.CountryID,
+                PhoneNumber = registerUserRequest.PhoneNumber,
+                EmailAddress = registerUserRequest.EmailAddress,
+                AdditionalAddress = registerUserRequest.AdditionalAddress,
+                ZipcodeID = registerUserRequest.ZipcodeID   
+            };
+
+            try
+            {
+                UserRegistrationDBService userRegistrationDBService = new();
+                var result = userRegistrationDBService.RegisterUser(registerUserModelRequest).Result;
+                
+
+                if (result.Success)
+                {
+                    return StatusResponse<string?>.SuccessStatus(result.Data, StatusCode.Found);
+                }
+                else
+                {
+                    return StatusResponse<string?>.FailureStatus(result.StatusCode, new Exception());
+                }
+
+            }
+
+            catch (Exception ex)
+            {
+                return StatusResponse<string?>.FailureStatus(StatusCode.knownException, ex);
+            }
+        }
+
+
+        public StatusResponse<int> UpdateUserWithUrl(UpdateUserWithUrlRequest updateUserWithUrlRequest)
+        {
+
+            List<UpdateUrlModelRequest> userUrlModels = updateUserWithUrlRequest.UserUrls?.Select(url => new UpdateUrlModelRequest
+            {
+                Url = url.Url,
+                UrlLabelId = url.UrlLabelId
+            }).ToList() ?? new List<UpdateUrlModelRequest>();
+
+
+
+            UpdateUserWithUrlModelRequest updateUserWithUrlModelRequest = new UpdateUserWithUrlModelRequest
+            {
+                UserID = updateUserWithUrlRequest.UserID,
+                FirstName = updateUserWithUrlRequest.FirstName,
+                LastName = updateUserWithUrlRequest.LastName,
+                CountryID = updateUserWithUrlRequest.CountryID,
+                PhoneNumber = updateUserWithUrlRequest.PhoneNumber,
+                EmailAddress = updateUserWithUrlRequest.EmailAddress,
+                AdditionalAddress = updateUserWithUrlRequest.AdditionalAddress,
+                ZipCodeID = updateUserWithUrlRequest.ZipCodeID,
+                UserUrls = userUrlModels
+            };
+
+            try
+            {
+                UserRegistrationDBService userRegistrationDBService = new();
+                var result = userRegistrationDBService.UpdateUserWithUrls(updateUserWithUrlModelRequest).Result;
+
+                if (result.Success)
+                {
+                    return StatusResponse<int>.SuccessStatus(result.Data, StatusCode.Success);
+                    
+                }
+                else
+                {
+                    return StatusResponse<int>.FailureStatus(result.StatusCode, new Exception());
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusResponse<int>.FailureStatus(StatusCode.knownException, ex);
+            }
+        }
+
+        public StatusResponse<UserWithUrlResponse> GetUserWithUrls(UserWithUrlRequest userWithUrlRequest)
+        {
+            var userWithUrlModelRequest = new UserWithUrlModelRequest { UserID = userWithUrlRequest.UserID };
+           
+
+            try
+            {
+                UserRegistrationDBService userRegistrationDBService = new();
+                var result = userRegistrationDBService.GetUserWithUrls(userWithUrlModelRequest).Result;
+
+                if(result.Success)
+                {
+                    var userWithUrlResponse = new UserWithUrlResponse()
+                    {
+                        UserID = result.Data.UserID,
+                        FirstName = result.Data.FirstName,
+                        LastName = result.Data.LastName,
+                        AdditionalAddress = result.Data.AdditionalAddress,
+                        UTLzipcodeID = result.Data.UTLzipcodeID,
+                        PhoneNumber = result.Data.PhoneNumber,
+                        EmailAddress = result.Data.EmailAddress,
+                        UTLcountryID = result.Data.UTLcountryID,
+                        UserUrls = result.Data.UserUrls.Select(url => new DTO.UserService.UrlResponse
+                        {
+                            UrlID = url.UrlID,
+                            UTLiTableID = url.UTLiTableID,
+                            Url = url.Url,
+                            UrlLabelId = url.UrlLabelId,
+                            ReferenceID = url.ReferenceID
+                        }).ToList()
+                    };
+                    return StatusResponse<UserWithUrlResponse>.SuccessStatus(userWithUrlResponse, StatusCode.Success);
+                }
+                else
+                {
+                    return StatusResponse<UserWithUrlResponse>.FailureStatus(result.StatusCode, new Exception());
+                }
+
+            }
+            catch (Exception ex)
+            {
+                return StatusResponse<UserWithUrlResponse>.FailureStatus(StatusCode.knownException, ex);
+            }
+        }
+
+
+        public StatusResponse<int> UpdateUserAdditionalAddress(UpdateUserAdditionalAddressRequest updateUserAdditionalAddressRequest)
+        {
+            var updateUserAdditionalAddressModelRequest = new UpdateUserAdditionalAddressModelRequest 
+            { 
+                UserID = updateUserAdditionalAddressRequest.UserID,
+                AdditionalAddress = updateUserAdditionalAddressRequest.AdditionalAddress
+            };
+
+            try
+            {
+                UserRegistrationDBService userRegistrationDBService = new();
+                var result = userRegistrationDBService.UpdateUserAdditionalAddress(updateUserAdditionalAddressModelRequest).Result;
+
+                if (result.Success)
+                {
+                    return StatusResponse<int>.SuccessStatus(result.Data, StatusCode.Success);
+                    
+
+                }
+                else
+                {
+                    return StatusResponse<int>.FailureStatus(result.StatusCode, new Exception());
+
+                }
+
+            }
+            catch (Exception ex)
+            {
+                return StatusResponse<int>.FailureStatus(StatusCode.knownException, ex);
+            }
 
         }
 
 
-        public async Task<Guid?> RegisterUserAsync(string name, string countryID, string phoneNumber, string emailAddress, string zipCodeID)
+        public StatusResponse<GetUsersAddtionalAddressResponse> GetUsersAddtionalAddress(GetUsersAddtionalAddressRequest getUsersAddtionalAddressRequest)
         {
-            return await _userRegistrationDBService.RegisterUser(name, countryID, phoneNumber, emailAddress, zipCodeID);
+            var getUsersAddtionalAddressModelRequest = new GetUsersAddtionalAddressModelRequest
+            {
+                UserID = getUsersAddtionalAddressRequest.UserID
+            };
+
+            try
+            {
+                UserRegistrationDBService userRegistrationDBService = new();
+                var result = userRegistrationDBService.GetUsersAddtionalAddress(getUsersAddtionalAddressModelRequest).Result;
+                var getUsersAddtionalAddressResponse = new GetUsersAddtionalAddressResponse()
+                {
+                    AdditionalAddress = result.Data.AdditionalAddress
+                };
+
+                if (result.Success)
+                {
+                    return StatusResponse<GetUsersAddtionalAddressResponse>.SuccessStatus(getUsersAddtionalAddressResponse, StatusCode.Success);
+
+                }
+                else
+                {
+                    return StatusResponse<GetUsersAddtionalAddressResponse>.FailureStatus(result.StatusCode, new Exception());
+                }
+
+            }
+            catch (Exception ex)
+            {
+                return StatusResponse<GetUsersAddtionalAddressResponse>.FailureStatus(StatusCode.knownException, ex);
+            }
+
         }
 
-
-        public async Task<bool> UpdateUser(string userID, string name, string countryID, string phoneNumber, string emailAddress, string zipCodeID)
-        {
-            return await _userRegistrationDBService.UpdateUser(userID, name, countryID, phoneNumber, emailAddress, zipCodeID);
-        }
-
-        public async Task<UserWithUrlsModel> GetUserWithUrls(string userID)
-        {
-            return await _userRegistrationDBService.GetUserWithUrls(userID);
-        }
-
-        public async Task InsertAddtionalAddressIntoUser(string userId, string additionalAddress)
-        {
-            await _userRegistrationDBService.UpdateUserAdditionalAddress(userId, additionalAddress);
-        }
-
-
-        public async Task<string> GetUsersAddtionalAddress(string userId)
-        {
-            return await _userRegistrationDBService.GetUsersAddtionalAddress(userId);
-        }
-
-        public async Task<bool> UpdateUserWithUrls(string UserID, UserWithUrl updateUser)
-        {
-            return await _userRegistrationDBService.UpdateUserWithUrls(UserID, updateUser);
-        }
     }
-}
 
+}

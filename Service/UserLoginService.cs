@@ -1,52 +1,72 @@
-using DBService;
-using Dto;
+﻿using DBService;
+using Model.UserService;
+using DTO.UserService;
+using Package;
 
-
-namespace Service{
-    public class UserLoginService 
+namespace Service
+{
+    public class UserLoginService
     {
-        private readonly UserLoginDBService _userLoginService;
-
-        public UserLoginService(UserLoginDBService userLoginService)
+        public StatusResponse<UserStatusResponse> CheckUserExistence(UserStatusRequest userStatusRequest)
         {
-            _userLoginService = userLoginService;
-        }
-
-        public async Task<bool> CheckEmailOrPhoneExistenceAsync(string emailOrPhone)
-        {
-            return await _userLoginService.CheckEmailOrPhoneExistenceAsync(emailOrPhone);
-        }
-
-        public async Task<UserStatus> CheckUserExistence(string userInput)
-        {
-            return await _userLoginService.CheckUserExistence(userInput);
-        }
-
-        public async Task<bool> ValidateUserPassword(string userInput, string enteredPassword)
-        {
+            var userStatusModelRequest = new UserStatusModelRequest { UserIdentity = userStatusRequest.UserIdentity};
             try
             {
-                int validationStatus = await _userLoginService.ValidatePassword(userInput, enteredPassword);
+                UserLoginDBService userLoginDBService = new();
+                var result = userLoginDBService.CheckUserExistence(userStatusModelRequest).Result;
+                if (result.Success)
+                {
+                    var loginStatus = new UserStatusResponse()
+                    {
+                        UserNAmeStatus = result.Data.UserNAmeStatus,
+                        IsOtp = result.Data.IsOtp,
+                        IsOtpAvailable = result.Data.IsOtpAvailable,
+                        IsPasswordAvailable = result.Data.IsPasswordAvailable
+                    };
 
-                // If the validation status is 1, the password is valid; otherwise, it's invalid
-                return validationStatus == 1;
+               
+                    return StatusResponse<UserStatusResponse>.SuccessStatus(loginStatus, StatusCode.Found);
+                }
+                else
+                {
+                    return StatusResponse<UserStatusResponse>.FailureStatus(result.StatusCode, new Exception());
+
+                }
+            } 
+            catch (Exception ex)
+            {
+                return StatusResponse<UserStatusResponse>.FailureStatus(StatusCode.knownException, ex);
+            }
+        }
+
+
+        public StatusResponse<GetUserIdByEmailResponse> GetUserIdByEmail(GetUserIdByEmailRequest getUserIdByEmailRequest)
+        {
+            var getUserIdByEmailModelRequest = new GetUserIdByEmailModelRequest { UserEmail = getUserIdByEmailRequest.UserEmail };
+            try
+            {
+                UserLoginDBService userLoginDBService = new();
+                var result = userLoginDBService.GetUserIdByEmail(getUserIdByEmailModelRequest).Result;
+                if (result.Success)
+                {
+                    var getUserIdByEmailStatus = new GetUserIdByEmailResponse()
+                    {
+                        UserId = result.Data.UserId
+                    };
+
+
+                    return StatusResponse<GetUserIdByEmailResponse>.SuccessStatus(getUserIdByEmailStatus, StatusCode.Found);
+                }
+                else
+                {
+                    return StatusResponse<GetUserIdByEmailResponse>.FailureStatus(result.StatusCode, new Exception());
+
+                }
             }
             catch (Exception ex)
             {
-                return false;
+                return StatusResponse<GetUserIdByEmailResponse>.FailureStatus(StatusCode.knownException, ex);
             }
         }
-
-
-            public async Task<UserContact> GetUserContactByUsernameAsync(string username)
-            {
-                return await _userLoginService.GetUserContactByUsername(username);
-            }
-        public async Task<String> GetUserIDFromEmailAsync(string email)
-        {
-            string result=await _userLoginService.GetUserIdByEmail(email);
-            return result;
-        }
-
     }
 }
